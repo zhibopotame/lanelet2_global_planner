@@ -43,6 +43,7 @@ protected:
 
   std::string base_link_frame_;
   std::string map_frame_;
+  bool planning_end_to_end_;
 
   ros::NodeHandle pnh_;
 

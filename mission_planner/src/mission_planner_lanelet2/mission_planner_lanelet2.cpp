@@ -158,20 +158,8 @@ void MissionPlannerLanelet2::visualizeRoute(const autoware_planning_msgs::Route 
 
   auto debug_map = routing_graph_ptr_->getDebugLaneletMap();
 
-  // for (const auto & checkpoint : checkpoints_) 
-  // {
-  //   geometry_msgs::PoseStamped pose;
-  //   pose.header.stamp = timestamp;
-  //   pose.header.frame_id = "map";
-  //   pose.pose.position.x = checkpoint.pose.position.x;
-  //   pose.pose.position.y = checkpoint.pose.position.y ;
-  //   pose.pose.position.z = 0.0;
-  //   path.poses.push_back(pose);
-  // }
-
-  // path_publisher.publish(path);
-
-
+  int count = 0;
+  int route_sections_size = route.route_sections.size();
   for (const auto & route_section : route.route_sections) {
     for (const auto & lane_id : route_section.lane_ids) {
       auto lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
@@ -183,16 +171,35 @@ void MissionPlannerLanelet2::visualizeRoute(const autoware_planning_msgs::Route 
       } else {
         end_lanelets.push_back(lanelet);
       }
-
+    if (count == 0 || count+1 == route_sections_size && planning_end_to_end_)
+      continue;
     auto point = debug_map->pointLayer.get(lane_id);
     geometry_msgs::PoseStamped pose;
     pose.header.stamp = timestamp;
     pose.header.frame_id = "map";
-    pose.pose.position.x = point.x() ;
+    pose.pose.position.x = point.x();
     pose.pose.position.y = point.y();
-    pose.pose.position.z = 0.5;
+    pose.pose.position.z = 0.1;
     path.poses.push_back(pose);
     }
+    count++;
+  }
+  if (planning_end_to_end_)
+  {
+    geometry_msgs::PoseStamped start_pose, goal_pose;
+    start_pose.header.stamp = timestamp;
+    start_pose.header.frame_id = "map";
+    start_pose.pose.position.x = start_pose_.pose.position.x;
+    start_pose.pose.position.y = start_pose_.pose.position.y;
+    start_pose.pose.position.z = 0.1;
+    path.poses.insert(path.poses.begin(), start_pose);
+
+    goal_pose.header.stamp = timestamp;
+    goal_pose.header.frame_id = "map";
+    goal_pose.pose.position.x = goal_pose_.pose.position.x;
+    goal_pose.pose.position.y = goal_pose_.pose.position.y;
+    goal_pose.pose.position.z = 0.1;
+    path.poses.push_back(goal_pose);
   }
 
   path_publisher.publish(path);

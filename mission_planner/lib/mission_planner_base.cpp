@@ -33,7 +33,10 @@ MissionPlanner::MissionPlanner() : pnh_("~"), tf_listener_(tf_buffer_)
 {
   pnh_.param<std::string>("map_frame", map_frame_, "map");
   pnh_.param<std::string>("base_link_frame", base_link_frame_, "base_link");
+  pnh_.param<float>("path_resolution", path_resolution_, 1.0);
   pnh_.param<bool>("planning_end_to_end", planning_end_to_end_, false);
+  pnh_.param<bool>("use_cubic_spline", use_cubic_spline_, true);
+  
 
   goal_subscriber_ = pnh_.subscribe("input/goal_pose", 10, &MissionPlanner::goalPoseCallback, this);
   checkpoint_subscriber_ =
@@ -41,7 +44,7 @@ MissionPlanner::MissionPlanner() : pnh_("~"), tf_listener_(tf_buffer_)
 
   route_publisher_ = pnh_.advertise<autoware_planning_msgs::Route>("output/route", 1, true);
   marker_publisher_ = pnh_.advertise<visualization_msgs::MarkerArray>("debug/route_marker", 1, true);
-  path_publisher = pnh_.advertise<nav_msgs::Path>("output/path", 1, true);
+  path_publisher_ = pnh_.advertise<nav_msgs::Path>("output/path", 1, true);
 }
 
 bool MissionPlanner::getEgoVehiclePose(geometry_msgs::PoseStamped * ego_vehicle_pose)

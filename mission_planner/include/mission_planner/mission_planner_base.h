@@ -44,11 +44,13 @@ protected:
   std::string base_link_frame_;
   std::string map_frame_;
   bool planning_end_to_end_;
+  bool use_cubic_spline_;
+  float path_resolution_;
 
   ros::NodeHandle pnh_;
 
   ros::Publisher marker_publisher_;
-  ros::Publisher path_publisher;
+  ros::Publisher path_publisher_;
 
   virtual bool isRoutingGraphReady() const = 0;
   virtual autoware_planning_msgs::Route planRoute() = 0;

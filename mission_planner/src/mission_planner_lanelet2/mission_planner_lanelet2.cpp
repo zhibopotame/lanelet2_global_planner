@@ -17,6 +17,7 @@
 #include <mission_planner/lanelet2_impl/mission_planner_lanelet2.h>
 #include <mission_planner/lanelet2_impl/route_handler.h>
 #include <mission_planner/lanelet2_impl/utility_functions.h>
+#include <mission_planner/cubic_spline.h>
 
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -155,61 +156,101 @@ void MissionPlannerLanelet2::visualizeRoute(const autoware_planning_msgs::Route 
   path.header.frame_id = "map";
   auto timestamp = ros::Time::now();
   path.header.stamp = timestamp;
+  Vec_f x, y;
 
   auto debug_map = routing_graph_ptr_->getDebugLaneletMap();
-
   int count = 0;
   int route_sections_size = route.route_sections.size();
-  for (const auto & route_section : route.route_sections) {
-    for (const auto & lane_id : route_section.lane_ids) {
+  for (const auto & route_section : route.route_sections) 
+  {
+    for (const auto & lane_id : route_section.lane_ids) 
+    {
       auto lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
       route_lanelets.push_back(lanelet);
-      if (route_section.preferred_lane_id == lane_id) {
+      if (route_section.preferred_lane_id == lane_id) 
+      {
         goal_lanelets.push_back(lanelet);
-      } else if (exists(route_section.continued_lane_ids, lane_id)) {
+      } 
+      else if (exists(route_section.continued_lane_ids, lane_id)) 
+      {
         normal_lanelets.push_back(lanelet);
-      } else {
+      } 
+      else 
+      {
         end_lanelets.push_back(lanelet);
       }
-    if (count == 0 || count+1 == route_sections_size && planning_end_to_end_)
-      continue;
-    auto point = debug_map->pointLayer.get(lane_id);
-    geometry_msgs::PoseStamped pose;
-    pose.header.stamp = timestamp;
-    pose.header.frame_id = "map";
-    pose.pose.position.x = point.x();
-    pose.pose.position.y = point.y();
-    pose.pose.position.z = 0.1;
-    path.poses.push_back(pose);
+      if (count == 0 || count+1 == route_sections_size && planning_end_to_end_)
+        continue;
+
+      auto point = debug_map->pointLayer.get(lane_id);
+      if (!use_cubic_spline_)
+      {
+        geometry_msgs::PoseStamped pose;
+        pose.header.stamp = timestamp;
+        pose.header.frame_id = "map";
+        pose.pose.position.x = point.x();
+        pose.pose.position.y = point.y();
+        pose.pose.position.z = 0.1;
+        path.poses.push_back(pose);
+      }
+      else
+      {
+        x.push_back(point.x());
+        y.push_back(point.y());
+      }
     }
     count++;
   }
+
   if (planning_end_to_end_)
   {
-    geometry_msgs::PoseStamped start_pose, goal_pose;
-    start_pose.header.stamp = timestamp;
-    start_pose.header.frame_id = "map";
-    start_pose.pose.position.x = start_pose_.pose.position.x;
-    start_pose.pose.position.y = start_pose_.pose.position.y;
-    start_pose.pose.position.z = 0.1;
-    path.poses.insert(path.poses.begin(), start_pose);
+    if(!use_cubic_spline_)
+    {
+      geometry_msgs::PoseStamped start_pose, goal_pose;
+      start_pose.header.stamp = timestamp;
+      start_pose.header.frame_id = "map";
+      start_pose.pose.position.x = start_pose_.pose.position.x;
+      start_pose.pose.position.y = start_pose_.pose.position.y;
+      start_pose.pose.position.z = 0.1;
+      path.poses.insert(path.poses.begin(), start_pose);
 
-    goal_pose.header.stamp = timestamp;
-    goal_pose.header.frame_id = "map";
-    goal_pose.pose.position.x = goal_pose_.pose.position.x;
-    goal_pose.pose.position.y = goal_pose_.pose.position.y;
-    goal_pose.pose.position.z = 0.1;
-    path.poses.push_back(goal_pose);
+      goal_pose.header.stamp = timestamp;
+      goal_pose.header.frame_id = "map";
+      goal_pose.pose.position.x = goal_pose_.pose.position.x;
+      goal_pose.pose.position.y = goal_pose_.pose.position.y;
+      goal_pose.pose.position.z = 0.1;
+      path.poses.push_back(goal_pose);
+    }
+    else
+    {
+      x.insert(x.begin(), start_pose_.pose.position.x);
+      y.insert(y.begin(), start_pose_.pose.position.y);
+      x.push_back(goal_pose_.pose.position.x);
+      y.push_back(goal_pose_.pose.position.y);
+
+      Spline2D csp_obj(x,y);
+      for(float i=0; i<csp_obj.s.back(); i+= path_resolution_)
+      {
+        std::array<float, 2> point_ = csp_obj.calc_postion(i);
+        geometry_msgs::PoseStamped pose;
+        pose.header.stamp = timestamp;
+        pose.header.frame_id = "map";
+        pose.pose.position.x = point_[0];
+        pose.pose.position.y = point_[1];
+        pose.pose.position.z = 0.1;
+        path.poses.push_back(pose);
+      }
+    }
+
   }
-
-  path_publisher.publish(path);
+  path_publisher_.publish(path);
 
   std_msgs::ColorRGBA cl_route, cl_ll_borders, cl_end, cl_normal, cl_goal;
-  setColor(&cl_route, 0.2, 0.4, 0.2, 0.05);
-  setColor(&cl_goal, 0.2, 0.4, 0.4, 0.05);
-  setColor(&cl_end, 0.2, 0.2, 0.4, 0.05);
-  setColor(&cl_normal, 0.2, 0.4, 0.2, 0.05);
-  setColor(&cl_ll_borders, 1.0, 1.0, 1.0, 0.999);
+  setColor(&cl_route, 0.2, 0.4, 0.2, 0.1);
+  setColor(&cl_goal, 0.2, 0.4, 0.4, 0.1);
+  setColor(&cl_end, 0.2, 0.2, 0.4, 0.1);
+  setColor(&cl_normal, 0.2, 0.4, 0.2, 0.1);
+  setColor(&cl_ll_borders, 0.0, 0.0, 0.0, 0.1);
 
   visualization_msgs::MarkerArray route_marker_array;
   insertMarkerArray(

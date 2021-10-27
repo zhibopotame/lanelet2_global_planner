@@ -245,6 +245,18 @@ void MissionPlannerLanelet2::visualizeRoute(const autoware_planning_msgs::Route 
   }
   path_publisher_.publish(path);
 
+  autoware_planning_msgs::Trajectory traj;
+  traj.header.frame_id = "map";
+  traj.header.stamp = timestamp;
+
+  for (auto pose : path.poses)
+  {
+    autoware_planning_msgs::TrajectoryPoint pt;
+    pt.pose.position = pose.pose.position;
+    traj.points.push_back(pt);
+  }
+  trajectory_publisher_.publish(traj);
+
   std_msgs::ColorRGBA cl_route, cl_ll_borders, cl_end, cl_normal, cl_goal;
   setColor(&cl_route, 0.2, 0.4, 0.2, 0.1);
   setColor(&cl_goal, 0.2, 0.4, 0.4, 0.1);

@@ -23,6 +23,8 @@
 
 // Autoware
 #include <autoware_planning_msgs/Route.h>
+#include <autoware_planning_msgs/Trajectory.h>
+#include <autoware_planning_msgs/TrajectoryPoint.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
@@ -50,7 +52,7 @@ protected:
   ros::NodeHandle pnh_;
 
   ros::Publisher marker_publisher_;
-  ros::Publisher path_publisher_;
+  ros::Publisher path_publisher_, trajectory_publisher_;
 
   virtual bool isRoutingGraphReady() const = 0;
   virtual autoware_planning_msgs::Route planRoute() = 0;

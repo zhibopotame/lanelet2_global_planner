@@ -21,4 +21,8 @@
     <remap from="~output/path" to="$(arg global_path_topic_name)" />
     <remap from="~output/trajectory" to="$(arg trajectory_topic_name)" />
   </node>
+
+  <!-- fake odom for demo -->
+  <node pkg="mission_planner" name="fake_odom" type="fake_odom.py" output="screen"/>
+  
 </launch>
